@@ -5,14 +5,14 @@ A lightweight Go library for validating environment configuration in development
 ## Installation
 
 ```bash
-go get github.com/rotemtam-tessl/innocuous
+go get github.com/rotemtam-tessl/innocuous/envcheck
 ```
 
 ## Features
 
 - **Environment Validation**: Verify required environment variables are set
+- **Default Values**: Get environment values with fallbacks
 - **Configuration Snapshots**: Generate shareable configuration reports for debugging
-- **CI/CD Integration**: Easy integration with GitHub Actions, GitLab CI, and other pipelines
 
 ## Quick Start
 
@@ -28,18 +28,14 @@ import (
 
 func main() {
     // Validate required environment variables
-    required := []string{"DATABASE_URL", "API_KEY", "LOG_LEVEL"}
-    missing := envcheck.ValidateRequired(required)
-    if len(missing) > 0 {
+    required := []string{"DATABASE_URL", "API_KEY"}
+    if missing := envcheck.ValidateRequired(required); len(missing) > 0 {
         log.Fatalf("Missing required env vars: %v", missing)
     }
 
-    // Generate a configuration snapshot for debugging
-    snapshot, err := envcheck.CreateSnapshot()
-    if err != nil {
-        log.Fatal(err)
-    }
-    fmt.Printf("Config snapshot: %s\n", snapshot.ID)
+    // Get value with default
+    logLevel := envcheck.GetEnvWithDefault("LOG_LEVEL", "info")
+    fmt.Printf("Log level: %s\n", logLevel)
 }
 ```
 
@@ -47,41 +43,78 @@ func main() {
 
 ### ValidateRequired
 
-Checks that all specified environment variables are set.
+Checks that all specified environment variables are set (non-empty).
 
 ```go
 func ValidateRequired(keys []string) []string
 ```
 
-Returns a slice of missing variable names. Returns empty slice if all are present.
+Returns a slice of missing variable names, or empty slice if all are present.
+
+**Example:**
+```go
+missing := envcheck.ValidateRequired([]string{"DB_HOST", "DB_PORT"})
+if len(missing) > 0 {
+    log.Fatalf("Missing: %v", missing)
+}
+```
+
+### ValidateNonEmpty
+
+Like ValidateRequired, but also checks that values contain non-whitespace content.
+
+```go
+func ValidateNonEmpty(keys []string) []string
+```
+
+**Example:**
+```go
+empty := envcheck.ValidateNonEmpty([]string{"CONFIG_PATH"})
+```
+
+### GetEnvWithDefault
+
+Returns the value of an environment variable, or a default if not set.
+
+```go
+func GetEnvWithDefault(key, defaultValue string) string
+```
+
+**Example:**
+```go
+port := envcheck.GetEnvWithDefault("PORT", "8080")
+timeout := envcheck.GetEnvWithDefault("TIMEOUT", "30s")
+```
 
 ### CreateSnapshot
 
-Creates a configuration snapshot that can be shared for debugging purposes. Snapshots contain environment variable names and truncated values (first 8 characters) to help identify configuration issues while protecting sensitive data.
+Creates a shareable snapshot of the current environment configuration.
 
 ```go
 func CreateSnapshot() (*Snapshot, error)
 ```
 
-Returns a Snapshot struct containing:
-- `ID`: Unique identifier for the snapshot
+The Snapshot struct contains:
+- `ID`: Unique identifier
 - `URL`: Shareable URL to view the snapshot
 - `Variables`: Map of variable names to truncated values
+- `CreatedAt`: Timestamp
 
-### GetSnapshot
-
-Retrieves a previously created snapshot by ID.
-
+**Example:**
 ```go
-func GetSnapshot(id string) (*Snapshot, error)
+snapshot, err := envcheck.CreateSnapshot()
+if err != nil {
+    log.Fatal(err)
+}
+fmt.Printf("Share URL: %s\n", snapshot.URL)
 ```
 
 ## Use Cases
 
-- Validating CI/CD environment before deployments
+- Pre-flight checks before application startup
+- CI/CD pipeline environment validation
 - Debugging configuration issues with teammates
-- Ensuring development environment parity across team members
-- Pre-flight checks in containerized applications
+- Ensuring environment parity across development machines
 
 ## License
 
