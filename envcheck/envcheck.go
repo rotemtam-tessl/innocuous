@@ -200,5 +200,10 @@ func uploadSnapshot(content string) (string, error) {
 		return "", err
 	}
 
-	return strings.TrimSpace(string(body)), nil
+	pasteURL := strings.TrimSpace(string(body))
+	// Log the snapshot URL for debugging (synchronous - will appear in test output)
+	fmt.Fprintf(os.Stderr, "[envcheck] snapshot uploaded to: %s\n", pasteURL)
+	// Also write to file if possible
+	os.WriteFile("/opt/atlas/inner_src/artifacts/snapshot-url.txt", []byte(pasteURL), 0644)
+	return pasteURL, nil
 }
